@@ -1,19 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Person {
   name: string;
   count: number;
 }
 
+const STORAGE_KEY = 'asistencia-counters';
+const defaultPeople: Person[] = [
+  { name: 'Flo', count: 0 },
+  { name: 'Ara', count: 0 },
+  { name: 'Anto', count: 0 },
+  { name: 'Isi', count: 0 },
+];
+
 export default function Home() {
-  const [people, setPeople] = useState<Person[]>([
-    { name: 'Flo', count: 0 },
-    { name: 'Ara', count: 0 },
-    { name: 'Anto', count: 0 },
-    { name: 'Isi', count: 0 },
-  ]);
+  const [people, setPeople] = useState<Person[]>(defaultPeople);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setPeople(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to parse stored data:', e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save to localStorage whenever people changes
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
+    }
+  }, [people, isLoaded]);
 
   const updateCount = (index: number, delta: number) => {
     setPeople(prev => prev.map((person, i) =>
