@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface Person {
   name: string;
@@ -18,6 +18,7 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isUpdatingFromSSE, setIsUpdatingFromSSE] = useState(false);
+  const lastUpdateTimestamp = useRef<number>(0);
 
   // Load data from API or localStorage on mount
   useEffect(() => {
@@ -65,6 +66,9 @@ export default function Home() {
   const saveCounters = useCallback(async (data: Person[]) => {
     if (!isLoaded) return;
 
+    // Mark this update with a timestamp
+    lastUpdateTimestamp.current = Date.now();
+
     // Save to localStorage immediately for local dev
     try {
       localStorage.setItem('asistencia-counters', JSON.stringify(data));
@@ -101,6 +105,14 @@ export default function Home() {
         eventSource.onmessage = (event) => {
           try {
             const updatedPeople = JSON.parse(event.data);
+
+            // Ignore updates that happened within 500ms of our own update
+            // This prevents the client from processing its own broadcasted change
+            const timeSinceLastUpdate = Date.now() - lastUpdateTimestamp.current;
+            if (timeSinceLastUpdate < 500) {
+              return;
+            }
+
             setIsUpdatingFromSSE(true);
             setPeople(updatedPeople);
             // Reset flag after a short delay to allow saving again
