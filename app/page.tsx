@@ -25,8 +25,19 @@ export default function Home() {
         // Try to load from API first
         const response = await fetch('/api/counters');
         if (response.ok) {
-          const data = await response.json();
-          setPeople(data);
+          const result = await response.json();
+
+          // If API says to use localStorage (no KV database), load from localStorage
+          if (result.useLocalStorage) {
+            const stored = localStorage.getItem('asistencia-counters');
+            if (stored) {
+              setPeople(JSON.parse(stored));
+            }
+          } else {
+            // Use data from API (production with KV)
+            setPeople(result);
+          }
+
           setIsLoaded(true);
           return;
         }
@@ -34,7 +45,7 @@ export default function Home() {
         console.error('Failed to load from API, falling back to localStorage:', e);
       }
 
-      // Fallback to localStorage for local dev
+      // Fallback to localStorage if API fails
       try {
         const stored = localStorage.getItem('asistencia-counters');
         if (stored) {

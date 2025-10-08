@@ -31,11 +31,11 @@ export async function GET() {
       return NextResponse.json(data || defaultPeople);
     }
 
-    // Return default values if KV not available (local dev)
-    return NextResponse.json(defaultPeople);
+    // Return null if KV not available (local dev uses localStorage)
+    return NextResponse.json({ useLocalStorage: true, data: defaultPeople });
   } catch (error) {
     console.error('Failed to fetch counters:', error);
-    return NextResponse.json(defaultPeople);
+    return NextResponse.json({ useLocalStorage: true, data: defaultPeople });
   }
 }
 

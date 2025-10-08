@@ -57,14 +57,33 @@ npm i -g vercel
 vercel
 ```
 
-### Required Environment Variables
+### Storage Behavior
 
-The app requires Vercel KV for persistent storage. When you create a KV database in Vercel, these environment variables are automatically set:
+**Local Development:**
+- Uses browser localStorage
+- Data persists per browser only
+- No cross-browser/device sync
 
-- `KV_URL`
-- `KV_REST_API_URL`
-- `KV_REST_API_TOKEN`
-- `KV_REST_API_READ_ONLY_TOKEN`
+**Production (Vercel with KV database):**
+- Uses Vercel KV (Redis)
+- Data syncs across ALL browsers and devices
+- Persistent centralized storage
+
+### Setting Up Cross-Browser Sync (Production)
+
+To enable data sync across all browsers and devices on production:
+
+1. Go to [Vercel Dashboard](https://vercel.com/dashboard) → Your Project
+2. Navigate to **Storage** tab
+3. Click **Upstash** → Select **Redis** → Click **Create**
+4. Name your database (e.g., "asistencia-storage")
+5. Click **Create**
+6. Vercel will automatically add these environment variables:
+   - `KV_URL`
+   - `KV_REST_API_URL`
+   - `KV_REST_API_TOKEN`
+   - `KV_REST_API_READ_ONLY_TOKEN`
+7. Your app will automatically redeploy with cross-device sync enabled!
 
 ## Customization
 
