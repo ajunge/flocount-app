@@ -18,28 +18,49 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load data from API on mount
+  // Load data from API or localStorage on mount
   useEffect(() => {
     async function loadCounters() {
       try {
+        // Try to load from API first
         const response = await fetch('/api/counters');
         if (response.ok) {
           const data = await response.json();
           setPeople(data);
+          setIsLoaded(true);
+          return;
         }
       } catch (e) {
-        console.error('Failed to load counters:', e);
-      } finally {
-        setIsLoaded(true);
+        console.error('Failed to load from API, falling back to localStorage:', e);
       }
+
+      // Fallback to localStorage for local dev
+      try {
+        const stored = localStorage.getItem('asistencia-counters');
+        if (stored) {
+          setPeople(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error('Failed to load from localStorage:', e);
+      }
+
+      setIsLoaded(true);
     }
     loadCounters();
   }, []);
 
-  // Save to API whenever people changes
+  // Save to API and localStorage whenever people changes
   const saveCounters = useCallback(async (data: Person[]) => {
     if (!isLoaded) return;
 
+    // Save to localStorage immediately for local dev
+    try {
+      localStorage.setItem('asistencia-counters', JSON.stringify(data));
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
+
+    // Also try to save to API for production
     try {
       await fetch('/api/counters', {
         method: 'POST',
@@ -47,7 +68,7 @@ export default function Home() {
         body: JSON.stringify(data),
       });
     } catch (e) {
-      console.error('Failed to save counters:', e);
+      console.error('Failed to save to API:', e);
     }
   }, [isLoaded]);
 
