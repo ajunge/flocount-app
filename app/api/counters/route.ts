@@ -63,7 +63,9 @@ export async function GET() {
 // POST - Save counters
 export async function POST(request: Request) {
   try {
-    const people: Person[] = await request.json();
+    const body = await request.json();
+    const people: Person[] = body.data || body;
+    const updateId = body.updateId;
 
     // Try Vercel KV first (production)
     if (hasKV && kv) {
@@ -75,9 +77,9 @@ export async function POST(request: Request) {
     if (redis) {
       await redis.set(STORAGE_KEY, JSON.stringify(people));
 
-      // Publish update to Redis channel for SSE
+      // Publish update to Redis channel for SSE, include the update ID
       if (publisher) {
-        await publisher.publish(CHANNEL_NAME, JSON.stringify(people));
+        await publisher.publish(CHANNEL_NAME, JSON.stringify({ data: people, updateId }));
       }
 
       return NextResponse.json({ success: true });
