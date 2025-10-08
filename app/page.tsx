@@ -72,6 +72,8 @@ export default function Home() {
     const updateId = `${Date.now()}-${Math.random()}`;
     lastUpdateId.current = updateId;
 
+    console.log('Saving counters with updateId:', updateId);
+
     // Save to localStorage immediately for local dev
     try {
       localStorage.setItem('asistencia-counters', JSON.stringify(data));
@@ -81,11 +83,12 @@ export default function Home() {
 
     // Also try to save to API for production, include the update ID
     try {
-      await fetch('/api/counters', {
+      const response = await fetch('/api/counters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data, updateId }),
       });
+      console.log('Save response:', await response.json());
     } catch (e) {
       console.error('Failed to save to API:', e);
     }
@@ -131,12 +134,16 @@ export default function Home() {
     }
 
     function startPolling() {
+      console.log('Starting polling mode for real-time updates');
       pollInterval = setInterval(async () => {
         try {
           const response = await fetch(`/api/poll?lastUpdateId=${lastSeenUpdateId || ''}`);
           const result = await response.json();
 
+          console.log('Poll result:', result, 'My updateId:', lastUpdateId.current);
+
           if (result.hasUpdate && result.updateId !== lastUpdateId.current) {
+            console.log('Updating people from poll:', result.data);
             setPeople(result.data);
             lastSeenUpdateId = result.updateId;
           }
