@@ -104,7 +104,15 @@ export default function Home() {
 
     async function connectSSE() {
       try {
+        console.log('Attempting SSE connection...');
         eventSource = new EventSource('/api/events');
+
+        let sseConnected = false;
+
+        eventSource.onopen = () => {
+          console.log('SSE connected successfully');
+          sseConnected = true;
+        };
 
         eventSource.onmessage = (event) => {
           try {
@@ -122,18 +130,35 @@ export default function Home() {
           }
         };
 
-        eventSource.onerror = () => {
-          console.log('SSE not available, falling back to polling');
-          eventSource?.close();
-          startPolling();
+        eventSource.onerror = (error) => {
+          console.log('SSE error:', error, 'Connected:', sseConnected);
+          if (!sseConnected) {
+            console.log('SSE failed to connect, falling back to polling');
+            eventSource?.close();
+            startPolling();
+          }
         };
+
+        // If SSE doesn't connect within 3 seconds, fall back to polling
+        setTimeout(() => {
+          if (!sseConnected) {
+            console.log('SSE timeout, falling back to polling');
+            eventSource?.close();
+            startPolling();
+          }
+        }, 3000);
       } catch (e) {
-        console.log('SSE not available, starting polling');
+        console.log('SSE not available, starting polling:', e);
         startPolling();
       }
     }
 
     function startPolling() {
+      if (pollInterval) {
+        console.log('Polling already started, skipping');
+        return;
+      }
+
       console.log('Starting polling mode for real-time updates');
       pollInterval = setInterval(async () => {
         try {
