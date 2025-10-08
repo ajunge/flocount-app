@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
       // Subscribe to Redis channel
       await subscriber.subscribe(CHANNEL_NAME);
 
+      // Send initial connection message so client knows SSE is working
+      controller.enqueue(encoder.encode(': connected\n\n'));
+
       // Handle messages from Redis
       const messageHandler = (channel: string, message: string) => {
         if (channel === CHANNEL_NAME && !isClosed) {
