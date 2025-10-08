@@ -19,6 +19,7 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
   const lastUpdateId = useRef<string | null>(null);
+  const [countKeys, setCountKeys] = useState<number[]>([0, 0, 0, 0]);
 
   // Load data from API or localStorage on mount
   useEffect(() => {
@@ -195,6 +196,8 @@ export default function Home() {
       i === index ? { ...person, count: person.count + delta } : person
     );
     setPeople(updatedPeople);
+    // Increment the key for this counter to force CountUp to animate
+    setCountKeys(prev => prev.map((key, i) => i === index ? key + 1 : key));
     saveCounters(updatedPeople);
   };
 
@@ -238,9 +241,10 @@ export default function Home() {
 
                 <span className="text-2xl sm:text-3xl font-bold text-gray-800 min-w-[3rem] text-center">
                   <CountUp
+                    key={countKeys[index]}
                     end={person.count}
                     duration={0.5}
-                    preserveValue
+                    useEasing={true}
                   />
                 </span>
 
