@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Person {
   name: string;
   count: number;
 }
 
-const STORAGE_KEY = 'asistencia-counters';
 const defaultPeople: Person[] = [
   { name: 'Flo', count: 0 },
   { name: 'Ara', count: 0 },
@@ -19,25 +18,44 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load data from localStorage on mount
+  // Load data from API on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    async function loadCounters() {
       try {
-        setPeople(JSON.parse(stored));
+        const response = await fetch('/api/counters');
+        if (response.ok) {
+          const data = await response.json();
+          setPeople(data);
+        }
       } catch (e) {
-        console.error('Failed to parse stored data:', e);
+        console.error('Failed to load counters:', e);
+      } finally {
+        setIsLoaded(true);
       }
     }
-    setIsLoaded(true);
+    loadCounters();
   }, []);
 
-  // Save to localStorage whenever people changes
+  // Save to API whenever people changes
+  const saveCounters = useCallback(async (data: Person[]) => {
+    if (!isLoaded) return;
+
+    try {
+      await fetch('/api/counters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch (e) {
+      console.error('Failed to save counters:', e);
+    }
+  }, [isLoaded]);
+
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(people));
+      saveCounters(people);
     }
-  }, [people, isLoaded]);
+  }, [people, isLoaded, saveCounters]);
 
   const updateCount = (index: number, delta: number) => {
     setPeople(prev => prev.map((person, i) =>
