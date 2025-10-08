@@ -70,6 +70,8 @@ export async function POST(request: Request) {
     // Try Vercel KV first (production)
     if (hasKV && kv) {
       await kv.set(STORAGE_KEY, people);
+      // Store update metadata for polling
+      await kv.set(`${STORAGE_KEY}:update`, { updateId, timestamp: Date.now() });
       return NextResponse.json({ success: true });
     }
 

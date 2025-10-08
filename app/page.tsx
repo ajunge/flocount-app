@@ -93,9 +93,11 @@ export default function Home() {
 
   // Don't auto-save on every change - only save when user clicks
 
-  // Connect to SSE for real-time updates
+  // Connect to SSE for real-time updates (development) or polling (production)
   useEffect(() => {
     let eventSource: EventSource | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
+    let lastSeenUpdateId: string | null = lastUpdateId.current;
 
     async function connectSSE() {
       try {
@@ -111,27 +113,47 @@ export default function Home() {
             }
 
             setPeople(message.data || message);
+            lastSeenUpdateId = message.updateId;
           } catch (e) {
             console.error('Failed to parse SSE data:', e);
           }
         };
 
         eventSource.onerror = () => {
-          console.log('SSE connection closed or not available');
+          console.log('SSE not available, falling back to polling');
           eventSource?.close();
+          startPolling();
         };
       } catch (e) {
-        console.log('SSE not available:', e);
+        console.log('SSE not available, starting polling');
+        startPolling();
       }
     }
 
-    // Only connect SSE after initial load
+    function startPolling() {
+      pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/poll?lastUpdateId=${lastSeenUpdateId || ''}`);
+          const result = await response.json();
+
+          if (result.hasUpdate && result.updateId !== lastUpdateId.current) {
+            setPeople(result.data);
+            lastSeenUpdateId = result.updateId;
+          }
+        } catch (e) {
+          console.error('Polling error:', e);
+        }
+      }, 2000); // Poll every 2 seconds
+    }
+
+    // Only connect after initial load
     if (isLoaded) {
       connectSSE();
     }
 
     return () => {
       eventSource?.close();
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [isLoaded]);
 
