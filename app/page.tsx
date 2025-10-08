@@ -17,7 +17,6 @@ const defaultPeople: Person[] = [
 export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isUpdatingFromSSE, setIsUpdatingFromSSE] = useState(false);
   const lastUpdateId = useRef<string | null>(null);
 
   // Load data from API or localStorage on mount
@@ -35,9 +34,12 @@ export default function Home() {
             if (stored) {
               setPeople(JSON.parse(stored));
             }
-          } else {
+          } else if (Array.isArray(result)) {
             // Use data from API (production with KV)
             setPeople(result);
+          } else if (result.data) {
+            // Handle wrapped data format
+            setPeople(result.data);
           }
 
           setIsLoaded(true);
@@ -89,11 +91,7 @@ export default function Home() {
     }
   }, [isLoaded]);
 
-  useEffect(() => {
-    if (isLoaded && !isUpdatingFromSSE) {
-      saveCounters(people);
-    }
-  }, [people, isLoaded, saveCounters, isUpdatingFromSSE]);
+  // Don't auto-save on every change - only save when user clicks
 
   // Connect to SSE for real-time updates
   useEffect(() => {
@@ -112,10 +110,7 @@ export default function Home() {
               return;
             }
 
-            setIsUpdatingFromSSE(true);
             setPeople(message.data || message);
-            // Reset flag after a short delay to allow saving again
-            setTimeout(() => setIsUpdatingFromSSE(false), 100);
           } catch (e) {
             console.error('Failed to parse SSE data:', e);
           }
@@ -141,9 +136,11 @@ export default function Home() {
   }, [isLoaded]);
 
   const updateCount = (index: number, delta: number) => {
-    setPeople(prev => prev.map((person, i) =>
+    const updatedPeople = people.map((person, i) =>
       i === index ? { ...person, count: person.count + delta } : person
-    ));
+    );
+    setPeople(updatedPeople);
+    saveCounters(updatedPeople);
   };
 
   return (
