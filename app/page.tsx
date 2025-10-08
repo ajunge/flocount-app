@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import CountUp from 'react-countup';
 
 interface Person {
   name: string;
@@ -236,7 +237,11 @@ export default function Home() {
                 </button>
 
                 <span className="text-2xl sm:text-3xl font-bold text-gray-800 min-w-[3rem] text-center">
-                  {person.count}
+                  <CountUp
+                    end={person.count}
+                    duration={0.5}
+                    preserveValue
+                  />
                 </span>
 
                 <button
