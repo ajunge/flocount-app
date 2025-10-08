@@ -106,10 +106,10 @@ export default function Home() {
           try {
             const updatedPeople = JSON.parse(event.data);
 
-            // Ignore updates that happened within 500ms of our own update
+            // Ignore updates that happened within 100ms of our own update
             // This prevents the client from processing its own broadcasted change
             const timeSinceLastUpdate = Date.now() - lastUpdateTimestamp.current;
-            if (timeSinceLastUpdate < 500) {
+            if (timeSinceLastUpdate < 100) {
               return;
             }
 
