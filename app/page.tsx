@@ -7,40 +7,60 @@ interface Person {
   count: number;
 }
 
-// Custom animated counter component
+// Custom animated counter component with odometer effect
 function AnimatedCounter({ value }: { value: number }) {
   const [displayValue, setDisplayValue] = useState(value);
+  const [isAnimating, setIsAnimating] = useState(false);
   const prevValueRef = useRef(value);
+  const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (value !== prevValueRef.current) {
       const start = prevValueRef.current;
       const end = value;
-      const duration = 500; // 500ms animation
+      const duration = 800; // 800ms for more visible animation
       const startTime = Date.now();
+      const difference = end - start;
+
+      setIsAnimating(true);
 
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
 
-        // Easing function (ease-out)
+        // Easing function (ease-out cubic)
         const easeProgress = 1 - Math.pow(1 - progress, 3);
 
-        const current = Math.round(start + (end - start) * easeProgress);
-        setDisplayValue(current);
+        const current = start + (difference * easeProgress);
+
+        // Round to whole number
+        const rounded = Math.round(current);
+        setDisplayValue(rounded);
 
         if (progress < 1) {
-          requestAnimationFrame(animate);
+          animationRef.current = requestAnimationFrame(animate);
         } else {
+          setDisplayValue(end);
           prevValueRef.current = end;
+          setIsAnimating(false);
+          animationRef.current = null;
         }
       };
 
-      requestAnimationFrame(animate);
+      // Cancel any ongoing animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
     }
   }, [value]);
 
-  return <>{displayValue}</>;
+  return (
+    <span className={`inline-block transition-all ${isAnimating ? 'scale-110' : 'scale-100'}`}>
+      {displayValue}
+    </span>
+  );
 }
 
 const defaultPeople: Person[] = [
