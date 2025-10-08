@@ -12,7 +12,6 @@ interface Person {
 const defaultPeople: Person[] = [
   { name: 'Flo', count: 0 },
   { name: 'Ara', count: 0 },
-  { name: 'Anto', count: 0 },
   { name: 'Isi', count: 0 },
 ];
 
