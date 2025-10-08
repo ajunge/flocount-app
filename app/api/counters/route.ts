@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Redis from 'ioredis';
+import { publisher, CHANNEL_NAME } from '@/lib/redis';
 
 const STORAGE_KEY = 'asistencia-counters';
 
@@ -73,6 +74,12 @@ export async function POST(request: Request) {
     // Try local Redis (development)
     if (redis) {
       await redis.set(STORAGE_KEY, JSON.stringify(people));
+
+      // Publish update to Redis channel for SSE
+      if (publisher) {
+        await publisher.publish(CHANNEL_NAME, JSON.stringify(people));
+      }
+
       return NextResponse.json({ success: true });
     }
 

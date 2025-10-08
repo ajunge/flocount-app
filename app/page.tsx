@@ -17,6 +17,7 @@ const defaultPeople: Person[] = [
 export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isUpdatingFromSSE, setIsUpdatingFromSSE] = useState(false);
 
   // Load data from API or localStorage on mount
   useEffect(() => {
@@ -84,10 +85,49 @@ export default function Home() {
   }, [isLoaded]);
 
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && !isUpdatingFromSSE) {
       saveCounters(people);
     }
-  }, [people, isLoaded, saveCounters]);
+  }, [people, isLoaded, saveCounters, isUpdatingFromSSE]);
+
+  // Connect to SSE for real-time updates
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+
+    async function connectSSE() {
+      try {
+        eventSource = new EventSource('/api/events');
+
+        eventSource.onmessage = (event) => {
+          try {
+            const updatedPeople = JSON.parse(event.data);
+            setIsUpdatingFromSSE(true);
+            setPeople(updatedPeople);
+            // Reset flag after a short delay to allow saving again
+            setTimeout(() => setIsUpdatingFromSSE(false), 100);
+          } catch (e) {
+            console.error('Failed to parse SSE data:', e);
+          }
+        };
+
+        eventSource.onerror = () => {
+          console.log('SSE connection closed or not available');
+          eventSource?.close();
+        };
+      } catch (e) {
+        console.log('SSE not available:', e);
+      }
+    }
+
+    // Only connect SSE after initial load
+    if (isLoaded) {
+      connectSSE();
+    }
+
+    return () => {
+      eventSource?.close();
+    };
+  }, [isLoaded]);
 
   const updateCount = (index: number, delta: number) => {
     setPeople(prev => prev.map((person, i) =>
