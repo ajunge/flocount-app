@@ -7,7 +7,8 @@ const CHANNEL_NAME = 'counters-updates';
 const hasKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
 
 // Check if local Redis is available (development)
-const hasLocalRedis = process.env.REDIS_URL;
+// Only use local Redis if REDIS_URL is set AND we're NOT using Vercel KV
+const hasLocalRedis = process.env.REDIS_URL && !hasKV;
 
 // Create Redis clients for pub/sub
 let publisher: Redis | UpstashRedis | null = null;
