@@ -1,39 +1,64 @@
 import { NextRequest } from 'next/server';
-import { subscriber, CHANNEL_NAME, hasLocalRedis } from '@/lib/redis';
+import Redis from 'ioredis';
+import { CHANNEL_NAME, hasLocalRedis } from '@/lib/redis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   // Only support SSE for local development with Redis
-  if (!hasLocalRedis || !subscriber) {
+  if (!hasLocalRedis) {
     return new Response('SSE not available', { status: 503 });
   }
 
+  // Create a new subscriber for this connection
+  const subscriber = new Redis(process.env.REDIS_URL!);
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
+      let isClosed = false;
+
       // Subscribe to Redis channel
-      subscriber!.subscribe(CHANNEL_NAME);
+      await subscriber.subscribe(CHANNEL_NAME);
 
       // Handle messages from Redis
-      subscriber!.on('message', (channel, message) => {
-        if (channel === CHANNEL_NAME) {
-          const data = `data: ${message}\n\n`;
-          controller.enqueue(encoder.encode(data));
+      const messageHandler = (channel: string, message: string) => {
+        if (channel === CHANNEL_NAME && !isClosed) {
+          try {
+            const data = `data: ${message}\n\n`;
+            controller.enqueue(encoder.encode(data));
+          } catch (e) {
+            console.error('Error enqueueing message:', e);
+          }
         }
-      });
+      };
+
+      subscriber.on('message', messageHandler);
 
       // Send keepalive every 30 seconds
       const keepalive = setInterval(() => {
-        controller.enqueue(encoder.encode(': keepalive\n\n'));
+        if (!isClosed) {
+          try {
+            controller.enqueue(encoder.encode(': keepalive\n\n'));
+          } catch (e) {
+            clearInterval(keepalive);
+          }
+        }
       }, 30000);
 
       // Cleanup on close
-      request.signal.addEventListener('abort', () => {
+      request.signal.addEventListener('abort', async () => {
+        isClosed = true;
         clearInterval(keepalive);
-        subscriber!.unsubscribe(CHANNEL_NAME);
+        subscriber.off('message', messageHandler);
+        await subscriber.unsubscribe(CHANNEL_NAME);
+        await subscriber.quit();
+        try {
+          controller.close();
+        } catch (e) {
+          // Already closed
+        }
       });
     },
   });
