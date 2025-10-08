@@ -1,11 +1,46 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import CountUp from 'react-countup';
 
 interface Person {
   name: string;
   count: number;
+}
+
+// Custom animated counter component
+function AnimatedCounter({ value }: { value: number }) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const prevValueRef = useRef(value);
+
+  useEffect(() => {
+    if (value !== prevValueRef.current) {
+      const start = prevValueRef.current;
+      const end = value;
+      const duration = 500; // 500ms animation
+      const startTime = Date.now();
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Easing function (ease-out)
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+
+        const current = Math.round(start + (end - start) * easeProgress);
+        setDisplayValue(current);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          prevValueRef.current = end;
+        }
+      };
+
+      requestAnimationFrame(animate);
+    }
+  }, [value]);
+
+  return <>{displayValue}</>;
 }
 
 const defaultPeople: Person[] = [
@@ -19,7 +54,6 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>(defaultPeople);
   const [isLoaded, setIsLoaded] = useState(false);
   const lastUpdateId = useRef<string | null>(null);
-  const [countKeys, setCountKeys] = useState<number[]>([0, 0, 0, 0]);
 
   // Load data from API or localStorage on mount
   useEffect(() => {
@@ -196,8 +230,6 @@ export default function Home() {
       i === index ? { ...person, count: person.count + delta } : person
     );
     setPeople(updatedPeople);
-    // Increment the key for this counter to force CountUp to animate
-    setCountKeys(prev => prev.map((key, i) => i === index ? key + 1 : key));
     saveCounters(updatedPeople);
   };
 
@@ -240,12 +272,7 @@ export default function Home() {
                 </button>
 
                 <span className="text-2xl sm:text-3xl font-bold text-gray-800 min-w-[3rem] text-center">
-                  <CountUp
-                    key={countKeys[index]}
-                    end={person.count}
-                    duration={0.5}
-                    useEasing={true}
-                  />
+                  <AnimatedCounter value={person.count} />
                 </span>
 
                 <button
